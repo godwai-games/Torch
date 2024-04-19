@@ -48,7 +48,7 @@ jobs:
 
     - name: Configure and Build Windows Binaries
       run: |
-        cmake -H. -Bbuild-cmake -G"Ninja" -DCMAKE_BUILD_TYPE=Release
+        cmake -S . -B build-cmake -G Ninja -DCMAKE_MAKE_PROGRAM=ninja -DCMAKE_BUILD_TYPE=Release
         cmake --build build-cmake --config Release -j
 
     - name: Publish Windows Release
