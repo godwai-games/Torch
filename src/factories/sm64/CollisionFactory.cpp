@@ -98,140 +98,141 @@ ExportResult SM64::CollisionCodeExporter::Export(std::ostream &write, std::share
 
     write << "Collision " << symbol << "[] = {\n";
 
-    write << fourSpaceTab;
-
-    write << "COL_INIT(),\n";
-    ++count;
-
-    // Vertices
-    if (collision->mVertices.size() > 0) {
+    for (auto &collisionData : collision->mCollisionData) {
         write << fourSpaceTab;
-        write << "COL_VERTEX_INIT(" << FORMAT_HEX(collision->mVertices.size()) << "),\n";
+
+        write << "COL_INIT(),\n";
         ++count;
-    }
-    for (auto &vertex : collision->mVertices) {
-        write << fourSpaceTab;
-        write << "COL_VERTEX(";
-        write << vertex.x << ", ";
-        write << vertex.y << ", ";
-        write << vertex.z << "),\n";
-        count += 3;
-    }
 
-    // Surfaces
-    for (auto &surface : collision->mSurfaces) {
-        // size check is probably not necessary here
-        if (surface.tris.size() > 0) {
+        // Vertices
+        if (collision->mVertices.size() > 0) {
             write << fourSpaceTab;
-            write << "COL_TRI_INIT(";
-            write << surface.surfaceType << ", ";
-            write << surface.tris.size() << "),\n";
-            count += 2;
+            write << "COL_VERTEX_INIT(" << FORMAT_HEX(collision->mVertices.size()) << "),\n";
+            ++count;
         }
-        bool hasForce = false;
-        switch (surface.surfaceType) {
-                case SurfaceType::SURFACE_0004:
-                case SurfaceType::SURFACE_FLOWING_WATER:
-                case SurfaceType::SURFACE_DEEP_MOVING_QUICKSAND:
-                case SurfaceType::SURFACE_SHALLOW_MOVING_QUICKSAND:
-                case SurfaceType::SURFACE_MOVING_QUICKSAND:
-                case SurfaceType::SURFACE_HORIZONTAL_WIND:
-                case SurfaceType::SURFACE_INSTANT_MOVING_QUICKSAND:
-                    hasForce = true;
-                    break;
-                default:
-                    break;
-            }
-        for (auto &tri : surface.tris) {
+        for (auto &vertex : collision->mVertices) {
             write << fourSpaceTab;
-            if (hasForce) {
-                write << "COL_TRI_SPECIAL(";
-            } else {
-                write << "COL_TRI(";
+            write << "COL_VERTEX(";
+            write << vertex.x << ", ";
+            write << vertex.y << ", ";
+            write << vertex.z << "),\n";
+            count += 3;
+        }
+
+        // Surfaces
+        for (auto &surface : collision->mSurfaces) {
+            // size check is probably not necessary here
+            if (surface.tris.size() > 0) {
+                write << fourSpaceTab;
+                write << "COL_TRI_INIT(";
+                write << surface.surfaceType << ", ";
+                write << surface.tris.size() << "),\n";
+                count += 2;
             }
+            bool hasForce = false;
+            switch (surface.surfaceType) {
+                    case SurfaceType::SURFACE_0004:
+                    case SurfaceType::SURFACE_FLOWING_WATER:
+                    case SurfaceType::SURFACE_DEEP_MOVING_QUICKSAND:
+                    case SurfaceType::SURFACE_SHALLOW_MOVING_QUICKSAND:
+                    case SurfaceType::SURFACE_MOVING_QUICKSAND:
+                    case SurfaceType::SURFACE_HORIZONTAL_WIND:
+                    case SurfaceType::SURFACE_INSTANT_MOVING_QUICKSAND:
+                        hasForce = true;
+                        break;
+                    default:
+                        break;
+                }
+            for (auto &tri : surface.tris) {
+                write << fourSpaceTab;
+                if (hasForce) {
+                    write << "COL_TRI_SPECIAL(";
+                } else {
+                    write << "COL_TRI(";
+                }
 
-            write << tri.x << ", ";
-            write << tri.y << ", ";
-            if (hasForce) {
-                write << tri.z << ", ";
-                write << tri.force << "),\n";
-                count += 4;
-            } else {
-                write << tri.z << "),\n";
-                count += 3;
+                write << tri.x << ", ";
+                write << tri.y << ", ";
+                if (hasForce) {
+                    write << tri.z << ", ";
+                    write << tri.force << "),\n";
+                    count += 4;
+                } else {
+                    write << tri.z << "),\n";
+                    count += 3;
+                }
             }
         }
-    }
-    if (collision->mSurfaces.size()) {
-        write << fourSpaceTab;
-        write << "COL_TRI_STOP()";
-        ++count;
-    }
-
-    // Special Objects
-    if (collision->mSpecialObjects.size() > 0) {
-        write << fourSpaceTab;
-        write << "COL_SPECIAL_INIT(" << collision->mSpecialObjects.size() << "),\n";
-        count += 2;
-    }
-    for (auto &specialObject : collision->mSpecialObjects) {
-        write << fourSpaceTab;
-        if (specialPresetMap.find((int16_t)specialObject.presetId) == specialPresetMap.end()) {
-            throw std::runtime_error("Special Preset Id has no associated Type");
-        }
-        SpecialPresetTypes type = specialPresetMap.at((int16_t)specialObject.presetId);
-        switch (type) {
-            case SpecialPresetTypes::SPTYPE_YROT_NO_PARAMS:
-            case SpecialPresetTypes::SPTYPE_DEF_PARAM_AND_YROT:
-                write << "SPECIAL_OBJECT_WITH_YAW(";
-                break;
-            case SpecialPresetTypes::SPTYPE_PARAMS_AND_YROT:
-                write << "SPECIAL_OBJECT_WITH_YAW_AND_PARAM(";
-                break;
-            case SpecialPresetTypes::SPTYPE_UNKNOWN:
-                break;
-            default:
-                write << "SPECIAL_OBJECT(";
-                break;
-        }
-        write << specialObject.presetId << ", ";
-        write << specialObject.x << ", ";
-        write << specialObject.y << ", ";
-        write << specialObject.z;
-        count += 4;
-
-        for (int16_t extraParam : specialObject.extraParams) {
-            write << ", ";
-            write << extraParam;
+        if (collision->mSurfaces.size()) {
+            write << fourSpaceTab;
+            write << "COL_TRI_STOP()\n";
             ++count;
         }
 
-        if (type != SpecialPresetTypes::SPTYPE_UNKNOWN) {
-            write << ")";
+        // Special Objects
+        if (collision->mSpecialObjects.size() > 0) {
+            write << fourSpaceTab;
+            write << "COL_SPECIAL_INIT(" << collision->mSpecialObjects.size() << "),\n";
+            count += 2;
         }
-        write << ",\n";
-    }
+        for (auto &specialObject : collision->mSpecialObjects) {
+            write << fourSpaceTab;
+            if (specialPresetMap.find((int16_t)specialObject.presetId) == specialPresetMap.end()) {
+                throw std::runtime_error("Special Preset Id has no associated Type");
+            }
+            SpecialPresetTypes type = specialPresetMap.at((int16_t)specialObject.presetId);
+            switch (type) {
+                case SpecialPresetTypes::SPTYPE_YROT_NO_PARAMS:
+                case SpecialPresetTypes::SPTYPE_DEF_PARAM_AND_YROT:
+                    write << "SPECIAL_OBJECT_WITH_YAW(";
+                    break;
+                case SpecialPresetTypes::SPTYPE_PARAMS_AND_YROT:
+                    write << "SPECIAL_OBJECT_WITH_YAW_AND_PARAM(";
+                    break;
+                case SpecialPresetTypes::SPTYPE_UNKNOWN:
+                    break;
+                default:
+                    write << "SPECIAL_OBJECT(";
+                    break;
+            }
+            write << specialObject.presetId << ", ";
+            write << specialObject.x << ", ";
+            write << specialObject.y << ", ";
+            write << specialObject.z;
+            count += 4;
 
-    // Environment Region Boxes
-    if (collision->mEnvRegionBoxes.size() > 0) {
-        write << fourSpaceTab;
-        write << "COL_WATER_BOX_INIT(" << collision->mEnvRegionBoxes.size() << "),\n";
-        count += 2;
-    }
-    for (auto &envRegionBox : collision->mEnvRegionBoxes) {
-        write << fourSpaceTab;
-        write << "COL_WATER_BOX(";
-        write << envRegionBox.id << ", ";
-        write << envRegionBox.x1 << ", ";
-        write << envRegionBox.z1 << ", ";
-        write << envRegionBox.x2 << ", ";
-        write << envRegionBox.z2 << ", ";
-        write << envRegionBox.height << "),\n";
-        count += 6;
-    }
+            for (int16_t extraParam : specialObject.extraParams) {
+                write << ", ";
+                write << extraParam;
+                ++count;
+            }
 
+            if (type != SpecialPresetTypes::SPTYPE_UNKNOWN) {
+                write << ")";
+            }
+            write << ",\n";
+        }
+
+        // Environment Region Boxes
+        if (collision->mEnvRegionBoxes.size() > 0) {
+            write << fourSpaceTab;
+            write << "COL_WATER_BOX_INIT(" << collision->mEnvRegionBoxes.size() << "),\n";
+            count += 2;
+        }
+        for (auto &envRegionBox : collision->mEnvRegionBoxes) {
+            write << fourSpaceTab;
+            write << "COL_WATER_BOX(";
+            write << envRegionBox.id << ", ";
+            write << envRegionBox.x1 << ", ";
+            write << envRegionBox.z1 << ", ";
+            write << envRegionBox.x2 << ", ";
+            write << envRegionBox.z2 << ", ";
+            write << envRegionBox.height << "),\n";
+            count += 6;
+        }
+    }
     write << fourSpaceTab;
-    write << "COL_END()";
+    write << "COL_END()\n";
     ++count;
 
     write << "};\n";
@@ -260,79 +261,91 @@ ExportResult SM64::CollisionBinaryExporter::Export(std::ostream &write, std::sha
 
     auto writer = LUS::BinaryWriter();
 
-    writer.Write((int16_t)COL_INIT());
 
-    // Vertices
-    if (collision->mVertices.size() > 0) {
-        writer.Write((int16_t)COL_VERTEX_INIT(collision->mVertices.size()));
-    }
-    for (auto &vertex : collision->mVertices) {
-        writer.Write(vertex.x);
-        writer.Write(vertex.y);
-        writer.Write(vertex.z);
-    }
-
-    // Surfaces
-    for (auto &surface : collision->mSurfaces) {
-        // size check is probably not necessary here
-        if (surface.tris.size() > 0) {
-            writer.Write((int16_t)surface.surfaceType);
-            writer.Write((int16_t)surface.tris.size());
-        }
-        bool hasForce = false;
-        switch (surface.surfaceType) {
-            case SurfaceType::SURFACE_0004:
-            case SurfaceType::SURFACE_FLOWING_WATER:
-            case SurfaceType::SURFACE_DEEP_MOVING_QUICKSAND:
-            case SurfaceType::SURFACE_SHALLOW_MOVING_QUICKSAND:
-            case SurfaceType::SURFACE_MOVING_QUICKSAND:
-            case SurfaceType::SURFACE_HORIZONTAL_WIND:
-            case SurfaceType::SURFACE_INSTANT_MOVING_QUICKSAND:
-                hasForce = true;
-                break;
-            default:
-                break;
-        }
-        for (auto &tri : surface.tris) {
-            writer.Write(tri.x);
-            writer.Write(tri.y);
-            writer.Write(tri.z);
-            if (hasForce) {
-                writer.Write(tri.force);
+    for (auto &collisionData : collision->mCollisionData) {
+        switch (static_cast<CollisionDataType>(collisionData.index())) {
+            // Vertices
+            case CollisionDataType::CollisionVertices: {
+                writer.Write((int16_t)COL_INIT());
+                auto data = std::get<CollisionVertices>(collisionData);
+                writer.Write((int16_t)COL_VERTEX_INIT(data.vertices.size()));
+                for (auto &vertex : data.vertices) {
+                    writer.Write(vertex.x);
+                    writer.Write(vertex.y);
+                    writer.Write(vertex.z);
+                }
             }
-        }
-    }
-    if (collision->mSurfaces.size()) {
-        writer.Write((int16_t)COL_TRI_STOP());
-    }
+            break;
 
-    // Special Objects
-    if (collision->mSpecialObjects.size() > 0) {
-        writer.Write((int16_t)TERRAIN_LOAD_OBJECTS);
-        writer.Write((int16_t)collision->mSpecialObjects.size());
-    }
-    for (auto &specialObject : collision->mSpecialObjects) {
-        writer.Write((int16_t)specialObject.presetId);
-        writer.Write(specialObject.x);
-        writer.Write(specialObject.y);
-        writer.Write(specialObject.z);
-        for (int16_t extraParam : specialObject.extraParams) {
-            writer.Write(extraParam);
-        }
-    }
+            // Surfaces
+            case CollisionDataType::CollisionSurfaces: {
+                auto data = std::get<CollisionSurfaces>(collisionData);
+                for (auto &surface : data.surface) {
+                    writer.Write((int16_t)surface.surfaceType);
+                    writer.Write((int16_t)surface.tris.size());
 
-    // Environment Region Boxes
-    if (collision->mEnvRegionBoxes.size() > 0) {
-        writer.Write((int16_t)TERRAIN_LOAD_ENVIRONMENT);
-        writer.Write((int16_t)collision->mEnvRegionBoxes.size());
-    }
-    for (auto &envRegionBox : collision->mEnvRegionBoxes) {
-        writer.Write(envRegionBox.id);
-        writer.Write(envRegionBox.x1);
-        writer.Write(envRegionBox.z1);
-        writer.Write(envRegionBox.x2);
-        writer.Write(envRegionBox.z2);
-        writer.Write(envRegionBox.height);
+                    bool hasForce = false;
+                    switch (surface.surfaceType) {
+                        case SurfaceType::SURFACE_0004:
+                        case SurfaceType::SURFACE_FLOWING_WATER:
+                        case SurfaceType::SURFACE_DEEP_MOVING_QUICKSAND:
+                        case SurfaceType::SURFACE_SHALLOW_MOVING_QUICKSAND:
+                        case SurfaceType::SURFACE_MOVING_QUICKSAND:
+                        case SurfaceType::SURFACE_HORIZONTAL_WIND:
+                        case SurfaceType::SURFACE_INSTANT_MOVING_QUICKSAND:
+                            hasForce = true;
+                            break;
+                        default:
+                            break;
+                    }
+                    for (auto &tri : surface.tris) {
+                        writer.Write(tri.x);
+                        writer.Write(tri.y);
+                        writer.Write(tri.z);
+                        if (hasForce) {
+                            writer.Write(tri.force);
+                        }
+                    }
+                }
+                writer.Write((int16_t)COL_TRI_STOP());
+            }
+            break;
+
+            // Special Objects
+            case CollisionDataType::SpecialObject: {
+                auto data = std::get<SpecialObjects>(collisionData);
+                writer.Write((int16_t)TERRAIN_LOAD_OBJECTS);
+                writer.Write((int16_t)data.objects.size());
+
+                for (auto &specialObject : data.objects) {
+                    writer.Write((int16_t)specialObject.presetId);
+                    writer.Write(specialObject.x);
+                    writer.Write(specialObject.y);
+                    writer.Write(specialObject.z);
+                    for (int16_t extraParam : specialObject.extraParams) {
+                        writer.Write(extraParam);
+                    }
+                }
+            }
+            break;
+
+            // Environment Region Boxes
+            case CollisionDataType::EnvRegionBox: {
+                auto data = std::get<EnvRegionBoxes>(collisionData);
+                writer.Write((int16_t)TERRAIN_LOAD_ENVIRONMENT);
+                writer.Write((int16_t)data.boxes.size());
+
+                for (auto &envRegionBox : data.boxes) {
+                    writer.Write(envRegionBox.id);
+                    writer.Write(envRegionBox.x1);
+                    writer.Write(envRegionBox.z1);
+                    writer.Write(envRegionBox.x2);
+                    writer.Write(envRegionBox.z2);
+                    writer.Write(envRegionBox.height);
+                }
+            }
+            break;
+        }
     }
 
     std::vector<char> buffer = writer.ToVector();
@@ -349,10 +362,8 @@ ExportResult SM64::CollisionBinaryExporter::Export(std::ostream &write, std::sha
 }
 
 std::optional<std::shared_ptr<IParsedData>> SM64::CollisionFactory::parse(std::vector<uint8_t>& buffer, YAML::Node& node) {
-    std::vector<CollisionVertex> vertices;
-    std::vector<CollisionSurface> surfaces;
-    std::vector<SpecialObject> specialObjects;
-    std::vector<EnvRegionBox> envRegionBoxes;
+    std::vector<CollisionSurface> collisionSurfaces;
+    std::vector<std::variant<CollisionVertices, CollisionSurface, SpecialObjects, EnvRegionBoxes>> collisionData;
     bool processing = true;
     auto [_, segment] = Decompressor::AutoDecode(node, buffer);
     auto cmd = segment.data;
@@ -387,8 +398,9 @@ std::optional<std::shared_ptr<IParsedData>> SM64::CollisionFactory::parse(std::v
                 int16_t force = hasForce ? reader.ReadInt16() : -1;
                 tris.emplace_back(x, y, z, force);
             }
-            surfaces.emplace_back(surfaceType, tris);
+            collisionSurfaces.emplace_back(surfaceType, tris);
         } else if (terrainLoadType == TERRAIN_LOAD_VERTICES) {
+            std::vector<Vec3s> vertices;
             int16_t numVertices = reader.ReadInt16();
             for (int16_t i = 0; i < numVertices; ++i) {
                 int16_t x = reader.ReadInt16();
@@ -396,8 +408,10 @@ std::optional<std::shared_ptr<IParsedData>> SM64::CollisionFactory::parse(std::v
                 int16_t z = reader.ReadInt16();
                 vertices.emplace_back(x, y, z);
             }
+            collisionData.emplace_back(vertices);
         } else if (terrainLoadType == TERRAIN_LOAD_OBJECTS) {
             int16_t numSpecialObjects = reader.ReadInt16();
+            std::vector<SpecialObject> specialObjects;
             for (int16_t i = 0; i < numSpecialObjects; ++i) {
                 int16_t presetId = reader.ReadInt16();
                 int16_t x = reader.ReadInt16();
@@ -430,8 +444,10 @@ std::optional<std::shared_ptr<IParsedData>> SM64::CollisionFactory::parse(std::v
                 }
                 specialObjects.emplace_back(specialPresetId, x, y, z, extraParams);
             }
+            collisionData.emplace_back(specialObjects);
         } else if (terrainLoadType == TERRAIN_LOAD_ENVIRONMENT) {
             int16_t numRegions = reader.ReadInt16();
+            std::vector<EnvRegionBox> envRegionBoxes;
             for (int16_t i = 0; i < numRegions; ++i) {
                 int16_t id = reader.ReadInt16();
                 int16_t x1 = reader.ReadInt16();
@@ -441,8 +457,10 @@ std::optional<std::shared_ptr<IParsedData>> SM64::CollisionFactory::parse(std::v
                 int16_t height = reader.ReadInt16();
                 envRegionBoxes.emplace_back(id, x1, z1, x2, z2, height);
             }
+            collisionData.emplace_back(envRegionBoxes);
         } else if (terrainLoadType == TERRAIN_LOAD_CONTINUE) {
-            // need to figure out a way to handle when this should appear in exporters. seems to always be after vertices
+            collisionData.emplace_back(collisionSurfaces);
+            collisionSurfaces.clear();
         } else if (terrainLoadType == TERRAIN_LOAD_END) {
             processing = false;
         } else if (TERRAIN_LOAD_IS_SURFACE_TYPE_HIGH(terrainLoadType)) {
@@ -470,9 +488,9 @@ std::optional<std::shared_ptr<IParsedData>> SM64::CollisionFactory::parse(std::v
                 int16_t force = hasForce ? reader.ReadInt16() : -1;
                 tris.emplace_back(x, y, z, force);
             }
-            surfaces.emplace_back(surfaceType, tris);
+            collisionSurfaces.emplace_back(surfaceType, tris);
         }
     }
 
-    return std::make_shared<Collision>(vertices, surfaces, specialObjects, envRegionBoxes);
+    return std::make_shared<Collision>(collisionData);
 }
