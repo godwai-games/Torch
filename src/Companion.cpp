@@ -64,6 +64,8 @@
 #include "factories/sf64/ObjInitFactory.h"
 #include "factories/sf64/TriangleFactory.h"
 
+#include "factories/z64/LimbFactory.h"
+
 using namespace std::chrono;
 namespace fs = std::filesystem;
 
@@ -132,6 +134,9 @@ void Companion::Init(const ExportType type) {
     this->RegisterFactory("SF64:OBJECT_INIT", std::make_shared<SF64::ObjInitFactory>());
     this->RegisterFactory("SF64:COLPOLY", std::make_shared<SF64::ColPolyFactory>());
     this->RegisterFactory("SF64:TRIANGLE", std::make_shared<SF64::TriangleFactory>());
+
+    // Z64 specific
+    this->RegisterFactory("Z64:LIMB", std::make_shared<Z64::LimbFactory>());
 
     this->Process();
 }

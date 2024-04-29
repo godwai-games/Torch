@@ -60,5 +60,8 @@ enum class ResourceType {
     ScriptCmd = 0x53434D44,    // SCMD
     Hitbox = 0x48544258,       // HTBX
     ObjectInit = 0x4F42494E,   // OBIN
+
+    // Z64
+    ZLimb = 0x4F534C42,        // OSLB
 };
 } // namespace LUS
