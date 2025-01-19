@@ -64,6 +64,10 @@ enum class ResourceType {
     // F-ZERO X
     CourseData = 0x58435253,   // XCRS
 
+    // OOT
+
+    SOH_PlayerAnimation = 0x4F50414D, // OPAM
+
     // NAudio v0
     Bank = 0x42414E4B,         // BANK
     Sample = 0x41554643,       // AIFC
