@@ -9,22 +9,11 @@
 
 namespace BK64 {
 
-class SpriteChunk {
-public:
-    TextureFormat mFormat;
-    uint32_t mWidth;
-    uint32_t mHeight;
-    std::vector<uint8_t> mBuffer;
-
-    SpriteChunk(TextureFormat format, uint32_t width, uint32_t height, std::vector<uint8_t>& buffer) : mFormat(format), mWidth(width), mHeight(height), mBuffer(std::move(buffer)) {}
-};
-
 class SpriteData : public IParsedData {
 public:
-    std::vector<SpriteChunk> mChunks;
     std::vector<uint16_t> mChunkCounts;
 
-    SpriteData(std::vector<SpriteChunk> chunks, std::vector<uint16_t> chunkCounts) : mChunks(std::move(chunks)), mChunkCounts(std::move(chunkCounts)) {}
+    SpriteData(std::vector<uint16_t> chunkCounts) : mChunkCounts(std::move(chunkCounts)) {}
 };
 
 class SpriteHeaderExporter : public BaseExporter {
@@ -55,6 +44,7 @@ public:
         };
     }
 
+    bool HasModdedDependencies() override { return true; }
     bool SupportModdedAssets() override { return true; }
 };
 

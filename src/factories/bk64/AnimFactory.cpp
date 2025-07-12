@@ -57,8 +57,6 @@ std::optional<std::shared_ptr<IParsedData>> AnimFactory::parse(std::vector<uint8
     LUS::BinaryReader reader(segment.data, segment.size);
     const auto symbol = GetSafeNode<std::string>(node, "symbol");
 
-    SPDLOG_ERROR("{} START", symbol);
-
     int16_t startFrame = reader.ReadInt16();
     int16_t endFrame = reader.ReadInt16();
     int16_t fileCount = reader.ReadInt16();

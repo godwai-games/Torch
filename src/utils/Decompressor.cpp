@@ -105,8 +105,8 @@ DecompressedData Decompressor::AutoDecode(YAML::Node& node, std::vector<uint8_t>
         auto decoded = Decode(buffer, fileOffset + offset, CompressionType::MIO0);
         auto size = node["size"] ? node["size"].as<size_t>() : manualSize.value_or(decoded->size);
         return {
-                .root = decoded,
-                .segment = { decoded->data, size }
+            .root = decoded,
+            .segment = { decoded->data, size }
         };
     }
 
@@ -130,8 +130,6 @@ DecompressedData Decompressor::AutoDecode(YAML::Node& node, std::vector<uint8_t>
 
     if (node["bkzip"]) {
         const auto compressedSize = GetSafeNode<uint32_t>(node, "compressed_size");
-
-        // TODO: Some weird bug with fileOffset exists
         auto decoded = Decode(buffer, offset, CompressionType::BKZIP, compressedSize);
         auto size = node["size"] ? node["size"].as<size_t>() : manualSize.value_or(decoded->size);
         return {
@@ -148,6 +146,22 @@ DecompressedData Decompressor::AutoDecode(YAML::Node& node, std::vector<uint8_t>
             offset = ASSET_PTR(offset);
 
             auto decoded = Decode(buffer, fileOffset, type);
+            auto size = node["size"] ? node["size"].as<size_t>() : manualSize.value_or(decoded->size - offset);
+            return {
+                .root = decoded,
+                .segment = { decoded->data + offset, size }
+            };
+        }
+        case CompressionType::BKZIP: {
+            offset = ASSET_PTR(offset);
+
+            const auto sizeEntry = Companion::Instance->GetCurrentCompressedSize();
+
+            if (!sizeEntry.has_value()) {
+                throw std::runtime_error("Auto decode missing file compressed size.");
+            }
+
+            auto decoded = Decode(buffer, fileOffset, type, sizeEntry.value());
             auto size = node["size"] ? node["size"].as<size_t>() : manualSize.value_or(decoded->size - offset);
             return {
                 .root = decoded,
@@ -196,7 +210,7 @@ uint32_t Decompressor::TranslateAddr(uint32_t addr, bool baseAddress){
         const auto vram = vramEntry.value();
 
         if(addr >= vram.addr){
-            return vram.offset + (addr - vram.addr);
+            return vram.offset + (!baseAddress ? (addr - vram.addr) : 0);
         }
     }
 

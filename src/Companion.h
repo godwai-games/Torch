@@ -162,6 +162,7 @@ public:
     std::optional<std::uint32_t> GetFileOffset(void) const { return this->gCurrentFileOffset; };
     std::optional<std::uint32_t> GetCurrSegmentNumber(void) const { return this->gCurrentSegmentNumber; };
     CompressionType GetCurrCompressionType(void) const { return this->gCurrentCompressionType; };
+    std::optional<std::uint32_t> GetCurrentCompressedSize(void) const { return this->gCurrentCompressedSize; };
     std::optional<VRAMEntry> GetCurrentVRAM(void) const { return this->gCurrentVram; };
     std::optional<Table> SearchTable(uint32_t addr);
 
@@ -175,6 +176,7 @@ public:
     BinaryWrapper* GetCurrentWrapper() { return this->gCurrentWrapper; }
 
     std::optional<std::tuple<std::string, YAML::Node>> RegisterAsset(const std::string& name, YAML::Node& node);
+    std::optional<YAML::Node> AddNewFileAsset(YAML::Node asset, std::string newFileName, CompressionType newCompressionType, uint32_t compressedSize = 0);
     std::optional<YAML::Node> AddAsset(YAML::Node asset);
 private:
     TorchConfig gConfig;
@@ -194,6 +196,7 @@ private:
 
     // Temporal Variables
     std::string gCurrentFile;
+    std::vector<std::string> gCurrentFileList;
     std::string gCurrentVirtualPath;
     std::string gFileHeader;
     bool gEnablePadGen = false;
@@ -202,6 +205,7 @@ private:
     uint32_t gCurrentSegmentNumber;
     std::optional<VRAMEntry> gCurrentVram;
     CompressionType gCurrentCompressionType = CompressionType::None;
+    std::optional<std::uint32_t> gCurrentCompressedSize;
     std::vector<Table> gTables;
     std::vector<std::string> gCurrentExternalFiles;
     std::unordered_set<std::string> gProcessedFiles;
