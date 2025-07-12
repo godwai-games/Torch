@@ -55,6 +55,7 @@ ExportResult BK64::AnimBinaryExporter::Export(std::ostream& write, std::shared_p
 std::optional<std::shared_ptr<IParsedData>> AnimFactory::parse(std::vector<uint8_t>& buffer, YAML::Node& node) {
     auto [_, segment] = Decompressor::AutoDecode(node, buffer);
     LUS::BinaryReader reader(segment.data, segment.size);
+    reader.SetEndianness(Torch::Endianness::Big);
     const auto symbol = GetSafeNode<std::string>(node, "symbol");
 
     int16_t startFrame = reader.ReadInt16();
