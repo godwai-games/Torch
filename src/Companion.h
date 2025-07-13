@@ -176,7 +176,7 @@ public:
     BinaryWrapper* GetCurrentWrapper() { return this->gCurrentWrapper; }
 
     std::optional<std::tuple<std::string, YAML::Node>> RegisterAsset(const std::string& name, YAML::Node& node);
-    std::optional<YAML::Node> AddNewFileAsset(YAML::Node asset, std::string newFileName, CompressionType newCompressionType, uint32_t compressedSize = 0);
+    std::optional<YAML::Node> AddSubFileAsset(YAML::Node asset, std::string newFileName, CompressionType newCompressionType, uint32_t compressedSize = 0);
     std::optional<YAML::Node> AddAsset(YAML::Node asset);
 private:
     TorchConfig gConfig;
@@ -196,7 +196,7 @@ private:
 
     // Temporal Variables
     std::string gCurrentFile;
-    std::vector<std::string> gCurrentFileList;
+    std::vector<std::string> gSubFileList;
     std::string gCurrentVirtualPath;
     std::string gFileHeader;
     bool gEnablePadGen = false;
@@ -220,6 +220,8 @@ private:
     std::unordered_map<std::string, std::tuple<uint32_t, uint32_t>> gVirtualAddrMap;
     std::unordered_map<std::string, std::unordered_map<uint32_t, std::tuple<std::string, YAML::Node>>> gAddrMap;
 
+    void ProcessParseFile(YAML::Node root);
+    void ProcessExportFile();
     void ProcessFile(YAML::Node root);
     void ParseEnums(std::string& file);
     void ParseHash();
