@@ -50,6 +50,7 @@ struct SegmentConfig {
     std::unordered_map<uint32_t, uint32_t> global;
     std::unordered_map<uint32_t, uint32_t> local;
     std::unordered_map<uint32_t, uint32_t> temporal;
+    std::unordered_map<uint32_t, std::pair<std::uint32_t, std::uint32_t>> compressed;
 };
 
 struct Table {
@@ -152,6 +153,7 @@ public:
     std::optional<ParseResultData> GetParseDataBySymbol(const std::string& symbol);
 
     std::optional<std::uint32_t> GetFileOffsetFromSegmentedAddr(uint8_t segment) const;
+    std::optional<std::pair<std::uint32_t, std::uint32_t>> GetFileOffsetFromCompressedSegmentedAddr(uint8_t segment) const;
     std::optional<std::shared_ptr<BaseFactory>> GetFactory(const std::string& type);
     uint32_t PatchVirtualAddr(uint32_t addr);
     std::optional<std::tuple<std::string, YAML::Node>> GetNodeByAddr(uint32_t addr);
@@ -178,6 +180,7 @@ public:
     std::optional<std::tuple<std::string, YAML::Node>> RegisterAsset(const std::string& name, YAML::Node& node);
     std::optional<YAML::Node> AddSubFileAsset(YAML::Node asset, std::string newFileName, CompressionType newCompressionType, uint32_t compressedSize = 0);
     std::optional<YAML::Node> AddAsset(YAML::Node asset);
+    void SetCompressedSegment(uint32_t segmentId, uint32_t compressedFileOffset, uint32_t offset);
 private:
     TorchConfig gConfig;
     YAML::Node gModdingConfig;
