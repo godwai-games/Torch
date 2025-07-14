@@ -26,6 +26,8 @@ enum class GeoLayoutOpCode {
 typedef struct GeoLayoutCommand {
     GeoLayoutOpCode opCode;
     std::vector<GeoLayoutArg> args;
+
+    GeoLayoutCommand(GeoLayoutOpCode opCode, std::vector<GeoLayoutArg> args) : opCode(opCode), args(std::move(args)) {}
 } GeoLayoutCommand;
 
 class GeoLayoutData : public IParsedData {

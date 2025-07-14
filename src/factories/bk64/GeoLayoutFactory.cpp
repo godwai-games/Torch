@@ -98,7 +98,6 @@ std::optional<std::shared_ptr<IParsedData>> GeoLayoutFactory::parse(std::vector<
     uint32_t extraCommandsToProcess = 0;
     
     while (true) {
-        GeoLayoutCommand cmd;
         std::vector<GeoLayoutArg> args;
         auto opCode = reader.ReadUInt32();
 
