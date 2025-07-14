@@ -181,6 +181,7 @@ public:
     std::optional<YAML::Node> AddSubFileAsset(YAML::Node asset, std::string newFileName, CompressionType newCompressionType, uint32_t compressedSize = 0);
     std::optional<YAML::Node> AddAsset(YAML::Node asset);
     void SetCompressedSegment(uint32_t segmentId, uint32_t compressedFileOffset, uint32_t offset);
+    bool GetCompressedSegmentOffset(uint32_t* addr);
 private:
     TorchConfig gConfig;
     YAML::Node gModdingConfig;

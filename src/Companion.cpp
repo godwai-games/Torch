@@ -1488,8 +1488,8 @@ std::optional<std::tuple<std::string, YAML::Node>> Companion::GetNodeByAddr(uint
     addr = PatchVirtualAddr(addr);
 
     if(!this->gAddrMap[this->gCurrentFile].contains(addr)){
-        if (IS_SEGMENTED(addr)) {
-            auto realAddr = Decompressor::TranslateAddr(addr, false) - Decompressor::TranslateAddr(addr, true);
+        auto realAddr = addr;
+        if (IS_SEGMENTED(addr) && GetCompressedSegmentOffset(&realAddr)) {
             if (this->gAddrMap[this->gCurrentFile].contains(realAddr)) {
                 return this->gAddrMap[this->gCurrentFile][realAddr];
             }
@@ -1728,4 +1728,15 @@ std::optional<YAML::Node> Companion::AddAsset(YAML::Node asset) {
 
 void Companion::SetCompressedSegment(uint32_t segmentId, uint32_t compressedFileOffset, uint32_t offset) {
     this->gConfig.segment.compressed[segmentId] = std::make_pair(compressedFileOffset, offset);
+}
+
+bool Companion::GetCompressedSegmentOffset(uint32_t* addr) {
+    if (IS_SEGMENTED(*addr)) {
+        const auto compressedSegmentPair = Companion::Instance->GetFileOffsetFromCompressedSegmentedAddr(SEGMENT_NUMBER(*addr));
+        if (compressedSegmentPair.has_value()) {
+            *addr = compressedSegmentPair.value().second + SEGMENT_OFFSET(*addr);
+            return true;
+        }
+    }
+    return false;
 }

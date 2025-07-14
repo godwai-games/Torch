@@ -72,18 +72,18 @@ int Vtx(uint32_t ptr, int32_t num) {
         return 1;
     }
 
-    if (IS_SEGMENTED(ptr)) {
-        ptr = Decompressor::TranslateAddr(ptr, false) - Decompressor::TranslateAddr(ptr, true);
-        vtx = GetVtxOverlap(ptr);
+    auto realAddr = ptr;
+    if (IS_SEGMENTED(realAddr) && Companion::Instance->GetCompressedSegmentOffset(&realAddr)) {
+        vtx = GetVtxOverlap(realAddr);
         if(vtx.has_value()){
             auto symbol = std::get<0>(vtx.value());
             auto node = std::get<1>(vtx.value());
 
             auto offset = GetSafeNode<uint32_t>(node, "offset");
             auto count = GetSafeNode<uint32_t>(node, "count");
-            auto idx = (ptr - offset) / sizeof(N64Vtx_t);
+            auto idx = (realAddr - offset) / sizeof(N64Vtx_t);
 
-            SPDLOG_INFO("Replaced Vtx Overlapped: 0x{:X} Symbol: {}", ptr, symbol);
+            SPDLOG_INFO("Replaced Vtx Overlapped: 0x{:X} Symbol: {}", realAddr, symbol);
             gfxd_puts("&");
             gfxd_puts(symbol.c_str());
             gfxd_puts("[");
