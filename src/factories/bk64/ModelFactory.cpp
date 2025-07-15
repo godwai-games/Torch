@@ -7,12 +7,12 @@
 #include "types/RawBuffer.h"
 
 #define BK64_MODEL_HEADER 0xB
-#define SEGMENT_OFFSET(segment, offset) ((((segment) & 0xFF) << 0x18) | ((offset) & 0x00FFFFFF))
 #define TEXTURE_HEADER_SIZE 0x8
 #define TEXTURE_METADATA_SIZE 0x10
 #define GFX_HEADER_SIZE 0x8
 #define GFX_CMD_SIZE 0x8
 #define VTX_HEADER_SIZE 0x18
+#define ANIM_TEXTURE_LIST_COUNT 4
 
 namespace BK64 {
 
@@ -106,40 +106,38 @@ std::optional<std::shared_ptr<IParsedData>> ModelFactory::parse(std::vector<uint
         return std::nullopt;
     }
 
-    
-    auto geoLayoutOffset = reader.ReadUInt32();
-    auto textureSetupOffset = reader.ReadUInt16();
-    auto geoType = reader.ReadUInt16();
-    auto displayListSetupOffset = reader.ReadUInt32();
-    auto vertexSetupOffset = reader.ReadUInt32();
-    auto unkHitboxInfo = reader.ReadUInt32(); // pad?
-    auto animationSetupOffset = reader.ReadUInt32();
-    auto collisionSetupOffset = reader.ReadUInt32();
-    auto effectsSetupEndOffset = reader.ReadUInt32();
-    auto effectsSetupOffset = reader.ReadUInt32();
-    reader.ReadUInt32(); // pad
-    auto animatedTextureOffset = reader.ReadUInt32();
-    auto triCount = reader.ReadUInt16();
-    auto vertCount = reader.ReadUInt16();
+    /* 0x04 */ auto geoLayoutOffset = reader.ReadUInt32();
+    /* 0x08 */ auto textureSetupOffset = reader.ReadUInt16();
+    /* 0x0A */ auto geoType = reader.ReadUInt16();
+    /* 0x0C */ auto displayListSetupOffset = reader.ReadUInt32();
+    /* 0x10 */ auto vertexSetupOffset = reader.ReadUInt32();
+    /* 0x14 */ auto unkHitboxInfo = reader.ReadUInt32();
+    /* 0x18 */ auto animationSetupOffset = reader.ReadUInt32();
+    /* 0x1C */ auto collisionSetupOffset = reader.ReadUInt32();
+    /* 0x20 */ auto modelUnk20Offset = reader.ReadUInt32();
+    /* 0x24 */ auto effectsSetupOffset = reader.ReadUInt32();
+    /* 0x28 */ auto modelUnk28Offset = reader.ReadUInt32();
+    /* 0x2C */ auto animatedTextureOffset = reader.ReadUInt32();
+    /* 0x30 */ auto triCount = reader.ReadUInt16();
+    /* 0x32 */ auto vertCount = reader.ReadUInt16();
 
-    Companion::Instance->SetCompressedSegment(1, fileOffset, modelOffset + vertexSetupOffset + VTX_HEADER_SIZE);
-    Companion::Instance->SetCompressedSegment(3, fileOffset, modelOffset + displayListSetupOffset + GFX_HEADER_SIZE);
+    uint16_t textureCount;
     
-    if (geoLayoutOffset != 0 && false) {
+    if (geoLayoutOffset != 0) {
+        SPDLOG_ERROR("HAS GL {}", symbol);
         YAML::Node geoLayout;
         geoLayout["type"] = "BK64:GEO_LAYOUT";
-        geoLayout["offset"] = geoLayoutOffset;
-        geoLayout["offset_end"] = (uint32_t)segment.size;
+        geoLayout["offset"] = modelOffset + geoLayoutOffset;
         geoLayout["symbol"] = symbol + "_GEO";
         Companion::Instance->AddAsset(geoLayout);
     }
 
     if (textureSetupOffset != 0) {
 
-        reader.Seek(textureSetupOffset, LUS::SeekOffsetType::Start);
+        reader.Seek(modelOffset + textureSetupOffset, LUS::SeekOffsetType::Start);
 
         auto textureDataSize = reader.ReadUInt32();
-        auto textureCount = reader.ReadUInt16();
+        textureCount = reader.ReadUInt16();
         reader.ReadUInt16(); // pad
 
         Companion::Instance->SetCompressedSegment(2, fileOffset, modelOffset + textureSetupOffset + TEXTURE_HEADER_SIZE + textureCount * TEXTURE_METADATA_SIZE);
@@ -217,53 +215,55 @@ std::optional<std::shared_ptr<IParsedData>> ModelFactory::parse(std::vector<uint
         }
     }
 
+    // Parse First To Avoid Auto Extraction By DLs
     if (vertexSetupOffset != 0) {
-        reader.Seek(vertexSetupOffset, LUS::SeekOffsetType::Start);
+        reader.Seek(modelOffset + vertexSetupOffset, LUS::SeekOffsetType::Start);
+        Companion::Instance->SetCompressedSegment(1, fileOffset, modelOffset + vertexSetupOffset + VTX_HEADER_SIZE);
 
-        auto minCoordsX = reader.ReadUInt16();
-        auto minCoordsY = reader.ReadUInt16();
-        auto minCoordsZ = reader.ReadUInt16();
-        auto maxCoordsX = reader.ReadUInt16();
-        auto maxCoordsY = reader.ReadUInt16();
-        auto maxCoordsZ = reader.ReadUInt16();
-        auto centerCoordsX = reader.ReadUInt16();
-        auto centerCoordsY = reader.ReadUInt16();
-        auto centerCoordsZ = reader.ReadUInt16();
+        auto minCoordsX = reader.ReadInt16();
+        auto minCoordsY = reader.ReadInt16();
+        auto minCoordsZ = reader.ReadInt16();
+        auto maxCoordsX = reader.ReadInt16();
+        auto maxCoordsY = reader.ReadInt16();
+        auto maxCoordsZ = reader.ReadInt16();
+        auto centerCoordsX = reader.ReadInt16();
+        auto centerCoordsY = reader.ReadInt16();
+        auto centerCoordsZ = reader.ReadInt16();
 
-        auto doubleVtxCount = reader.ReadUInt16();
+        auto largestDistToCenter = reader.ReadUInt16();
+        auto vtxCount = reader.ReadUInt16();
         auto largestDistToOrigin = reader.ReadUInt16();
 
         YAML::Node vtx;
         vtx["type"] = "VTX";
-        vtx["count"] = doubleVtxCount / 2;
+        vtx["count"] = vtxCount;
         vtx["offset"] = modelOffset + vertexSetupOffset + VTX_HEADER_SIZE;
         vtx["symbol"] = symbol + "_VTX";
         Companion::Instance->AddAsset(vtx);
     }
 
     if (displayListSetupOffset != 0) {
-        reader.Seek(displayListSetupOffset, LUS::SeekOffsetType::Start);
+        reader.Seek(modelOffset + displayListSetupOffset, LUS::SeekOffsetType::Start);
         auto dlCount = reader.ReadUInt32();
-        reader.ReadUInt32(); // checksum?
+        auto unkDLInfo = reader.ReadUInt32(); // checksum?
 
-        std::vector<uint32_t> dlOffsets;
+        std::set<uint32_t> dlOffsets;
         uint32_t dlOffset = 0;
-        dlOffsets.emplace_back(dlOffset);
+        dlOffsets.emplace(dlOffset);
         while (dlOffset < dlCount * GFX_CMD_SIZE) {
             auto w0 = reader.ReadUInt32();
-            reader.ReadUInt32();
+            auto w1 = reader.ReadUInt32();
             dlOffset += GFX_CMD_SIZE;
             uint8_t opCode = w0 >> 24;
             
             if (opCode == GBI(G_ENDDL) && dlOffset != dlCount * GFX_CMD_SIZE) {
-                dlOffsets.emplace_back(dlOffset);
+                dlOffsets.emplace(dlOffset);
             }
         }
 
         uint32_t count = 0;
         for (const auto& extractOffset : dlOffsets) {
             YAML::Node gfxNode;
-
             gfxNode["type"] = "GFX";
             gfxNode["offset"] = modelOffset + displayListSetupOffset + GFX_HEADER_SIZE + extractOffset;
             gfxNode["symbol"] = symbol + "_GFX_" + std::to_string(count);
@@ -272,7 +272,104 @@ std::optional<std::shared_ptr<IParsedData>> ModelFactory::parse(std::vector<uint
         }
     }
 
+    if (unkHitboxInfo != 0) {
+        SPDLOG_ERROR("HAS HITBOX(?)");
+    }
 
+    if (animationSetupOffset != 0) {
+        reader.Seek(modelOffset + animationSetupOffset, LUS::SeekOffsetType::Start);
+        auto scalingFactor = reader.ReadFloat();
+        auto boneCount = reader.ReadUInt16();
+        reader.ReadUInt16(); // pad
+
+        std::vector<BoneData> bones;
+        for (uint16_t i = 0; i < boneCount; i++) {
+            BoneData bone;
+            bone.x = reader.ReadFloat();
+            bone.y = reader.ReadFloat();
+            bone.z = reader.ReadFloat();
+            bone.id = reader.ReadUInt16();
+            bone.parentId = reader.ReadUInt16();
+            bones.push_back(bone);
+        }
+    }
+
+    if (collisionSetupOffset != 0) {
+        reader.Seek(modelOffset + collisionSetupOffset, LUS::SeekOffsetType::Start);
+
+        auto minIndexX = reader.ReadInt16();
+        auto minIndexY = reader.ReadInt16();
+        auto minIndexZ = reader.ReadInt16();
+        auto maxIndexX = reader.ReadInt16();
+        auto maxIndexY = reader.ReadInt16();
+        auto maxIndexZ = reader.ReadInt16();
+        auto yStride = reader.ReadUInt16();
+        auto zStride = reader.ReadUInt16();
+        auto geoCubeCount = reader.ReadUInt16();
+        auto geoCubeScale = reader.ReadUInt16();
+        auto triCount = reader.ReadUInt16();
+        reader.ReadUInt16(); // pad
+
+        std::vector<GeoCube> cubes;
+        for (uint16_t i = 0; i < geoCubeCount; i++) {
+            GeoCube cube;
+            cube.startTri = reader.ReadUInt16();
+            cube.triCount = reader.ReadUInt16();
+            cubes.push_back(cube);
+        }
+
+        std::vector<CollisionTri> tris;
+        for (uint16_t i = 0; i < triCount; i++) {
+            CollisionTri tri;
+
+            tri.vtxId1 = reader.ReadUInt16();
+            tri.vtxId2 = reader.ReadUInt16();
+            tri.vtxId3 = reader.ReadUInt16();
+            tri.unk6 = reader.ReadUInt16();
+            tri.flags = reader.ReadUInt32();
+            tris.push_back(tri);
+        }
+    }
+
+    if (modelUnk20Offset != 0) {
+        SPDLOG_ERROR("HAS UNK 20");
+    }
+
+    if (effectsSetupOffset != 0) {
+        reader.Seek(modelOffset + effectsSetupOffset, LUS::SeekOffsetType::Start);
+        auto effectCount = reader.ReadUInt16();
+
+        std::vector<Effect> effects;
+        for (uint16_t i = 0; i < effectCount; i++) {
+            Effect effect;
+            effect.dataInfo = reader.ReadUInt16();
+            auto vtxCount = reader.ReadUInt16();
+            for (uint16_t j = 0; j < vtxCount; j++) {
+                effect.vtxIndices.push_back(reader.ReadUInt16());
+            }
+            effects.push_back(effect);
+        }
+    }
+
+    if (modelUnk28Offset != 0) {
+        SPDLOG_ERROR("HAS UNK 28");
+    }
+
+    if (animatedTextureOffset != 0) {
+        reader.Seek(modelOffset + animatedTextureOffset, LUS::SeekOffsetType::Start);
+        std::vector<AnimTexture> animTextureList;
+        for (uint32_t i = 0; i < ANIM_TEXTURE_LIST_COUNT; i++) {
+            AnimTexture animTexture;
+            animTexture.frameSize = reader.ReadUInt16();
+            animTexture.frameCount = reader.ReadUInt16();
+            animTexture.frameRate = reader.ReadFloat();
+
+            // Set Segment to frame 0 texture
+            if (animTexture.frameSize != 0) {
+                Companion::Instance->SetCompressedSegment(15 - i, fileOffset, modelOffset + modelOffset + textureSetupOffset + TEXTURE_HEADER_SIZE + textureCount * TEXTURE_METADATA_SIZE);
+            }
+        }
+    }
 
     return std::make_shared<ModelData>();
 }

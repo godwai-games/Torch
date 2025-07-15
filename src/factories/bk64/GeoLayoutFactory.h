@@ -11,24 +11,30 @@ enum class GeoLayoutArgType {
 };
 
 enum class GeoLayoutOpCode {
-    Sort = 1,
+    UnknownCmd0,
+    Sort,
     Bone,
     LoadDL,
     Skinning = 5,
     Branch,
-    LOD = 8,
+    UnknownCmd7,
+    LOD,
     ReferencePoint = 10,
     Selector = 12,
-    DrawDistance = 13,
-    UnknownCmd = 14
+    DrawDistance,
+    UnknownCmdE,
+    UnknownCmdF,
+    UnknownCmd10,
 };
 
-typedef struct GeoLayoutCommand {
+class GeoLayoutCommand {
+  public:
     GeoLayoutOpCode opCode;
+    uint32_t cmdLength;
     std::vector<GeoLayoutArg> args;
 
-    GeoLayoutCommand(GeoLayoutOpCode opCode, std::vector<GeoLayoutArg> args) : opCode(opCode), args(std::move(args)) {}
-} GeoLayoutCommand;
+    GeoLayoutCommand(GeoLayoutOpCode opCode, uint32_t cmdLength, std::vector<GeoLayoutArg> args) : opCode(opCode), cmdLength(cmdLength), args(std::move(args)) {}
+};
 
 class GeoLayoutData : public IParsedData {
   public:
@@ -52,15 +58,23 @@ class GeoLayoutCodeExporter : public BaseExporter {
                         YAML::Node& node, std::string* replacement) override;
 };
 
+class GeoLayoutModdingExporter : public BaseExporter {
+    ExportResult Export(std::ostream& write, std::shared_ptr<IParsedData> data, std::string& entryName,
+                        YAML::Node& node, std::string* replacement) override;
+};
+
 class GeoLayoutFactory : public BaseFactory {
   public:
     std::optional<std::shared_ptr<IParsedData>> parse(std::vector<uint8_t>& buffer, YAML::Node& data) override;
+    // std::optional<std::shared_ptr<IParsedData>> parse_modding(std::vector<uint8_t>& buffer, YAML::Node& data) override;
     inline std::unordered_map<ExportType, std::shared_ptr<BaseExporter>> GetExporters() override {
         return { 
             REGISTER(Code, GeoLayoutCodeExporter) 
             REGISTER(Header, GeoLayoutHeaderExporter)                     
             REGISTER(Binary, GeoLayoutBinaryExporter) 
+            REGISTER(Modding, GeoLayoutModdingExporter) 
         };
     }
+    bool SupportModdedAssets() override { return true; }
 };
 } // namespace BK64

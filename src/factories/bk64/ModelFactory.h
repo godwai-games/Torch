@@ -4,6 +4,41 @@
 
 namespace BK64 {
 
+typedef struct BoneData {
+    float x;
+    float y;
+    float z;
+    uint16_t id;
+    uint16_t parentId;
+} BoneData;
+
+typedef struct GeoCube {
+    uint16_t startTri;
+    uint16_t triCount;
+} GeoCube;
+
+typedef struct CollisionTri {
+    uint16_t vtxId1;
+    uint16_t vtxId2;
+    uint16_t vtxId3;
+    uint16_t unk6;
+    uint32_t flags;
+} CollisionTri;
+
+typedef struct Effect {
+    uint16_t dataInfo;
+    std::vector<uint16_t> vtxIndices;
+} Effect;
+
+typedef struct AnimTexture {
+    uint16_t frameSize;
+    uint16_t frameCount;
+    float frameRate;
+} AnimTexture;
+    
+namespace Model {
+
+} // namespace Model
 class ModelData : public IParsedData {
   public:
 

@@ -1461,8 +1461,8 @@ std::optional<std::pair<std::uint32_t, std::uint32_t>>Companion::GetFileOffsetFr
 
     auto segments = this->gConfig.segment;
 
-    if(segments.compressed.contains(segment)) {
-        return segments.compressed[segment];
+    if(segments.compressed[this->gCurrentFile].contains(segment)) {
+        return segments.compressed[this->gCurrentFile][segment];
     }
 
     return std::nullopt;
@@ -1727,7 +1727,7 @@ std::optional<YAML::Node> Companion::AddAsset(YAML::Node asset) {
 }
 
 void Companion::SetCompressedSegment(uint32_t segmentId, uint32_t compressedFileOffset, uint32_t offset) {
-    this->gConfig.segment.compressed[segmentId] = std::make_pair(compressedFileOffset, offset);
+    this->gConfig.segment.compressed[this->gCurrentFile][segmentId] = std::make_pair(compressedFileOffset, offset);
 }
 
 bool Companion::GetCompressedSegmentOffset(uint32_t* addr) {

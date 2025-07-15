@@ -50,7 +50,7 @@ struct SegmentConfig {
     std::unordered_map<uint32_t, uint32_t> global;
     std::unordered_map<uint32_t, uint32_t> local;
     std::unordered_map<uint32_t, uint32_t> temporal;
-    std::unordered_map<uint32_t, std::pair<std::uint32_t, std::uint32_t>> compressed;
+    std::unordered_map<std::string, std::unordered_map<uint32_t, std::pair<std::uint32_t, std::uint32_t>>> compressed;
 };
 
 struct Table {
