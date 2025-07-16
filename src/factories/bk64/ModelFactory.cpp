@@ -111,7 +111,7 @@ std::optional<std::shared_ptr<IParsedData>> ModelFactory::parse(std::vector<uint
     /* 0x0A */ auto geoType = reader.ReadUInt16();
     /* 0x0C */ auto displayListSetupOffset = reader.ReadUInt32();
     /* 0x10 */ auto vertexSetupOffset = reader.ReadUInt32();
-    /* 0x14 */ auto unkHitboxInfo = reader.ReadUInt32();
+    /* 0x14 */ auto unkHitboxInfoOffset = reader.ReadUInt32();
     /* 0x18 */ auto animationSetupOffset = reader.ReadUInt32();
     /* 0x1C */ auto collisionSetupOffset = reader.ReadUInt32();
     /* 0x20 */ auto modelUnk20Offset = reader.ReadUInt32();
@@ -249,7 +249,9 @@ std::optional<std::shared_ptr<IParsedData>> ModelFactory::parse(std::vector<uint
 
         std::set<uint32_t> dlOffsets;
         uint32_t dlOffset = 0;
-        dlOffsets.emplace(dlOffset);
+        if (dlCount > 0) {
+            dlOffsets.emplace(dlOffset);
+        }
         while (dlOffset < dlCount * GFX_CMD_SIZE) {
             auto w0 = reader.ReadUInt32();
             auto w1 = reader.ReadUInt32();
@@ -272,8 +274,54 @@ std::optional<std::shared_ptr<IParsedData>> ModelFactory::parse(std::vector<uint
         }
     }
 
-    if (unkHitboxInfo != 0) {
-        SPDLOG_ERROR("HAS HITBOX(?)");
+    if (unkHitboxInfoOffset != 0) {
+        reader.Seek(modelOffset + unkHitboxInfoOffset, LUS::SeekOffsetType::Start);
+        auto count1 = reader.ReadInt16();
+        auto count2 = reader.ReadInt16();
+        auto count3 = reader.ReadInt16();
+        auto unk6 = reader.ReadInt16();
+
+        for (int16_t i = 0; i < count1; i++) {
+            auto xScale1 = reader.ReadInt16();
+            auto yScale1 = reader.ReadInt16();
+            auto zScale1 = reader.ReadInt16();
+            auto xScale2 = reader.ReadInt16();
+            auto yScale2 = reader.ReadInt16();
+            auto zScale2 = reader.ReadInt16();
+            auto xPos = reader.ReadInt16();
+            auto yPos = reader.ReadInt16();
+            auto zPos = reader.ReadInt16();
+            auto xRot = reader.ReadUByte();
+            auto yRot = reader.ReadUByte();
+            auto zRot = reader.ReadUByte();
+            auto unk15 = reader.ReadUByte();
+            auto animIndex = reader.ReadUByte();
+            reader.ReadUByte(); // pad
+        }
+
+        for (int16_t i = 0; i < count2; i++) {
+            auto unk0 = reader.ReadInt16();
+            auto unk2 = reader.ReadInt16();
+            auto xPos = reader.ReadInt16();
+            auto yPos = reader.ReadInt16();
+            auto zPos = reader.ReadInt16();
+            auto xRot = reader.ReadUByte();
+            auto yRot = reader.ReadUByte();
+            auto zRot = reader.ReadUByte();
+            auto unkD = reader.ReadUByte();
+            auto animIndex = reader.ReadUByte();
+            reader.ReadUByte(); // pad
+        }
+
+        for (int16_t i = 0; i < count3; i++) {
+            auto unk0 = reader.ReadInt16();
+            auto xUnk2 = reader.ReadInt16();
+            auto yUnk2 = reader.ReadInt16();
+            auto zUnk2 = reader.ReadInt16();
+            auto unk8 = reader.ReadUByte();
+            auto animIndex = reader.ReadUByte();
+            reader.ReadUByte(); // pad
+        }
     }
 
     if (animationSetupOffset != 0) {
@@ -332,7 +380,20 @@ std::optional<std::shared_ptr<IParsedData>> ModelFactory::parse(std::vector<uint
     }
 
     if (modelUnk20Offset != 0) {
-        SPDLOG_ERROR("HAS UNK 20");
+        reader.Seek(modelOffset + modelUnk20Offset, LUS::SeekOffsetType::Start);
+        auto count = reader.ReadInt8();
+        reader.ReadInt8(); // pad
+
+        for (int8_t i = 0; i < count; i++) {
+            auto xUnk0 = reader.ReadInt16();
+            auto yUnk0 = reader.ReadInt16();
+            auto zUnk0 = reader.ReadInt16();
+            auto xUnk6 = reader.ReadInt16();
+            auto yUnk6 = reader.ReadInt16();
+            auto zUnk6 = reader.ReadInt16();
+            auto unkC = reader.ReadUByte();
+            reader.ReadUByte(); // pad
+        }
     }
 
     if (effectsSetupOffset != 0) {
@@ -353,6 +414,20 @@ std::optional<std::shared_ptr<IParsedData>> ModelFactory::parse(std::vector<uint
 
     if (modelUnk28Offset != 0) {
         SPDLOG_ERROR("HAS UNK 28");
+        reader.Seek(modelOffset + modelUnk20Offset, LUS::SeekOffsetType::Start);
+        auto count = reader.ReadInt16();
+        reader.ReadInt16(); // pad
+
+        for (int16_t i = 0; i < count; i++) {
+            auto xCoord = reader.ReadInt16();
+            auto yCoord = reader.ReadInt16();
+            auto zCoord = reader.ReadInt16();
+            auto animIndex = reader.ReadInt8();
+            auto vtxCount = reader.ReadInt8();
+            for (int16_t j = 0; j < vtxCount; j++) {
+                auto vtxIndex = reader.ReadInt16();
+            }
+        }
     }
 
     if (animatedTextureOffset != 0) {

@@ -8,6 +8,7 @@
 #include <deque>
 
 #define ALIGN8(val) (((val) + 7) & ~7)
+#define YAML_HEX(num) YAML::Hex << (num) << YAML::Dec
 
 namespace BK64 {
 
@@ -41,7 +42,7 @@ ExportResult BK64::GeoLayoutBinaryExporter::Export(std::ostream& write, std::sha
         for(auto& args : arguments) {
             switch(static_cast<GeoLayoutArgType>(args.index())) {
                 case GeoLayoutArgType::U8: {
-                    writer.Write(std::get<uint8_t>(args));
+                    writer.Write((uint32_t)std::get<uint8_t>(args));
                     break;
                 }
                 case GeoLayoutArgType::S8: {
@@ -89,9 +90,12 @@ ExportResult BK64::GeoLayoutBinaryExporter::Export(std::ostream& write, std::sha
     return std::nullopt;
 }
 
+// TODO: calculate numChildren on parse?
 ExportResult GeoLayoutModdingExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
     auto geo = std::static_pointer_cast<GeoLayoutData>(raw);
     const auto symbol = GetSafeNode(node, "symbol", entryName);
+
+    *replacement += ".yaml";
 
     YAML::Emitter out;
     out << YAML::BeginMap;
@@ -99,78 +103,195 @@ ExportResult GeoLayoutModdingExporter::Export(std::ostream& write, std::shared_p
     out << YAML::Value;
     out.SetIndent(2);
     out << YAML::BeginSeq;
+    std::deque<std::tuple<uint32_t, uint32_t, uint32_t>> childrenStack;
 
-    for(const auto& [opCode, cmdLength, arguments] : geo->mCmds) {
+    for(auto& [opCode, cmdLength, arguments] : geo->mCmds) {
+        uint32_t numChildren = 0;
         uint32_t i = 0;
-        bool addChild = false;
+
+        out << YAML::Value;
         out << YAML::BeginMap;
 
         switch(opCode) {
             case GeoLayoutOpCode::UnknownCmd0:
                 out << YAML::Key << "UnknownCmd0";
                 out << YAML::Value << YAML::BeginMap;
-                out << YAML::Key << "childOffset" << YAML::Value << std::get<uint16_t>(arguments.at(i++));
-                out << YAML::Key << "shouldRotatePitch" << YAML::Value << std::get<uint16_t>(arguments.at(i++));
-                out << YAML::Key << "x" << YAML::Value << std::get<float>(arguments.at(i++));
-                out << YAML::Key << "y" << YAML::Value << std::get<float>(arguments.at(i++));
-                out << YAML::Key << "z" << YAML::Value << std::get<float>(arguments.at(i++));
+                out << YAML::Key << "childOffset" << YAML::Value << YAML_HEX(std::get<uint16_t>(arguments.at(0)));
+                out << YAML::Key << "shouldRotatePitch" << YAML::Value << (bool)std::get<uint16_t>(arguments.at(1));
+                out << YAML::Key << "x" << YAML::Value << std::get<float>(arguments.at(2));
+                out << YAML::Key << "y" << YAML::Value << std::get<float>(arguments.at(3));
+                out << YAML::Key << "z" << YAML::Value << std::get<float>(arguments.at(4));
                 break;
             case GeoLayoutOpCode::Sort:
                 out << YAML::Key << "Sort";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "x1" << YAML::Value << std::get<float>(arguments.at(0));
+                out << YAML::Key << "y1" << YAML::Value << std::get<float>(arguments.at(1));
+                out << YAML::Key << "z1" << YAML::Value << std::get<float>(arguments.at(2));
+                out << YAML::Key << "x2" << YAML::Value << std::get<float>(arguments.at(3));
+                out << YAML::Key << "y2" << YAML::Value << std::get<float>(arguments.at(4));
+                out << YAML::Key << "z2" << YAML::Value << std::get<float>(arguments.at(5));
+                out << YAML::Key << "layoutOrder" << YAML::Value << (uint32_t)std::get<uint8_t>(arguments.at(6));
+                out << YAML::Key << "firstChildOffset" << YAML::Value << YAML_HEX(std::get<uint16_t>(arguments.at(7)));
+                out << YAML::Key << "secondChildOffset" << YAML::Value << YAML_HEX(std::get<uint16_t>(arguments.at(8)));
+
+                if (std::get<uint16_t>(arguments.at(7)) != 0) {
+                    numChildren++;
+                }
+                if (std::get<uint16_t>(arguments.at(8)) != 0) {
+                    numChildren++;
+                }
                 break;
             case GeoLayoutOpCode::Bone:
                 out << YAML::Key << "Bone";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "childOffset" << YAML::Value << YAML_HEX((uint32_t)std::get<uint8_t>(arguments.at(0)));
+                out << YAML::Key << "boneId" << YAML::Value << (uint32_t)std::get<uint8_t>(arguments.at(1));
+                out << YAML::Key << "unkBoneInfo" << YAML::Value << std::get<uint16_t>(arguments.at(2));
+                if (std::get<uint8_t>(arguments.at(0)) != 0) {
+                    numChildren++;
+                }
                 break;
             case GeoLayoutOpCode::LoadDL:
                 out << YAML::Key << "LoadDL";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "dlIndex" << YAML::Value << std::get<uint16_t>(arguments.at(0));
+                out << YAML::Key << "triCount" << YAML::Value << std::get<uint16_t>(arguments.at(1));
                 break;
             case GeoLayoutOpCode::Skinning:
                 out << YAML::Key << "Skinning";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "dlOffsetPreviousBone" << YAML::Value << std::get<uint16_t>(arguments.at(0));
+                out << YAML::Key << "dlOffsets" << YAML::Value;
+                out << YAML::BeginSeq;
+                for (size_t j = 1; j < arguments.size(); j++) {
+                    out << YAML::Value << std::get<uint16_t>(arguments.at(j));
+                }
+                out << YAML::EndSeq;
                 break;
             case GeoLayoutOpCode::Branch:
                 out << YAML::Key << "Branch";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "cmdTargetOffset" << YAML::Value << std::get<uint32_t>(arguments.at(0));
                 break;
             case GeoLayoutOpCode::UnknownCmd7:
                 out << YAML::Key << "UnknownCmd7";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "dlIndex" << YAML::Value << std::get<uint16_t>(arguments.at(0));
                 break;
             case GeoLayoutOpCode::LOD:
                 out << YAML::Key << "LOD";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "maxDistance" << YAML::Value << std::get<float>(arguments.at(0));
+                out << YAML::Key << "minDistance" << YAML::Value << std::get<float>(arguments.at(1));
+                out << YAML::Key << "x" << YAML::Value << std::get<float>(arguments.at(2));
+                out << YAML::Key << "y" << YAML::Value << std::get<float>(arguments.at(3));
+                out << YAML::Key << "z" << YAML::Value << std::get<float>(arguments.at(4));
+                out << YAML::Key << "childOffset" << YAML::Value << YAML_HEX(std::get<uint32_t>(arguments.at(5)));
+                if (std::get<uint32_t>(arguments.at(5)) != 0) {
+                    numChildren++;
+                }
                 break;
             case GeoLayoutOpCode::ReferencePoint:
                 out << YAML::Key << "ReferencePoint";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "referencePointIndex" << YAML::Value << std::get<uint16_t>(arguments.at(0));
+                out << YAML::Key << "boneIndex" << YAML::Value << std::get<uint16_t>(arguments.at(1));
+                out << YAML::Key << "boneOffsetX" << YAML::Value << std::get<float>(arguments.at(2));
+                out << YAML::Key << "boneOffsetY" << YAML::Value << std::get<float>(arguments.at(3));
+                out << YAML::Key << "boneOffsetZ" << YAML::Value << std::get<float>(arguments.at(4));
                 break;
             case GeoLayoutOpCode::Selector:
                 out << YAML::Key << "Selector";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "childCount" << YAML::Value << std::get<uint16_t>(arguments.at(0));
+                out << YAML::Key << "selectorIndex" << YAML::Value << std::get<uint16_t>(arguments.at(1));
+                out << YAML::Key << "childOffsets" << YAML::Value;
+                out << YAML::BeginSeq;
+                for (size_t j = 2; j < arguments.size(); j++) {
+                    out << YAML::Value << YAML_HEX(std::get<uint32_t>(arguments.at(j)));
+                    if (std::get<uint32_t>(arguments.at(j)) != 0) {
+                        numChildren++;
+                    }
+                }
+                out << YAML::EndSeq;
                 break;
             case GeoLayoutOpCode::DrawDistance:
                 out << YAML::Key << "DrawDistance";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "negX" << YAML::Value << std::get<int16_t>(arguments.at(0));
+                out << YAML::Key << "negY" << YAML::Value << std::get<int16_t>(arguments.at(1));
+                out << YAML::Key << "negZ" << YAML::Value << std::get<int16_t>(arguments.at(2));
+                out << YAML::Key << "posX" << YAML::Value << std::get<int16_t>(arguments.at(3));
+                out << YAML::Key << "posY" << YAML::Value << std::get<int16_t>(arguments.at(4));
+                out << YAML::Key << "posZ" << YAML::Value << std::get<int16_t>(arguments.at(5));
+                out << YAML::Key << "unk14" << YAML::Value << std::get<int16_t>(arguments.at(6));
+                out << YAML::Key << "unk16" << YAML::Value << std::get<int16_t>(arguments.at(7));
                 break;
             case GeoLayoutOpCode::UnknownCmdE:
                 out << YAML::Key << "UnknownCmdE";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "coords1X" << YAML::Value << std::get<int16_t>(arguments.at(0));
+                out << YAML::Key << "coords1Y" << YAML::Value << std::get<int16_t>(arguments.at(1));
+                out << YAML::Key << "coords1Z" << YAML::Value << std::get<int16_t>(arguments.at(2));
+                out << YAML::Key << "coords2X" << YAML::Value << std::get<int16_t>(arguments.at(3));
+                out << YAML::Key << "coords2Y" << YAML::Value << std::get<int16_t>(arguments.at(4));
+                out << YAML::Key << "coords2Z" << YAML::Value << std::get<int16_t>(arguments.at(5));
                 break;
             case GeoLayoutOpCode::UnknownCmdF:
                 out << YAML::Key << "UnknownCmdF";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "childOffset" << YAML::Value << YAML_HEX(std::get<uint16_t>(arguments.at(0)));
+                out << YAML::Key << "unkA" << YAML::Value << (uint32_t)std::get<uint8_t>(arguments.at(1));
+                out << YAML::Key << "unkB" << YAML::Value << (uint32_t)std::get<uint8_t>(arguments.at(2));
+                out << YAML::Key << "unkCBuf" << YAML::Value;
+                out << YAML::BeginSeq;
+                for (uint32_t j = 0; j < 12; j++) {
+                    out << YAML::Value << (uint32_t)std::get<uint8_t>(arguments.at(j + 3));
+                }
+                out << YAML::EndSeq;
+                if (std::get<uint16_t>(arguments.at(0)) != 0) {
+                    numChildren++;
+                }
                 break;
             case GeoLayoutOpCode::UnknownCmd10:
                 out << YAML::Key << "UnknownCmd10";
                 out << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "wrapMode" << YAML::Value << std::get<int32_t>(arguments.at(0));
                 break;
             default:
                 throw std::runtime_error("BK64::GeoLayoutModdingExporter: Unknown OpCode Found " + std::to_string(static_cast<uint32_t>(opCode)));
         }
+
+        out << YAML::Key << "CMD_LEN" << YAML::Value << cmdLength;
+
+        if (numChildren > 0) {
+            childrenStack.emplace_back(0, numChildren, cmdLength);
+            out << YAML::Key << "Children" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "Child0" << YAML::Value << YAML::BeginSeq;
+            continue;
+        }
+
         out << YAML::EndMap;
+        out << YAML::EndMap;
+
+        while (cmdLength == 0 && !childrenStack.empty()) {
+            auto& [childrenProcessed, totalChildren, parentCmdLength] = childrenStack.back();
+            if (++childrenProcessed >= totalChildren) {
+                out << YAML::EndSeq;
+                out << YAML::EndMap;
+                out << YAML::EndMap;
+                out << YAML::EndMap;
+                cmdLength = parentCmdLength;
+                childrenStack.pop_back();
+                // Exit Child
+            } else {
+                // Go To Next Child
+                out << YAML::EndSeq;
+                out << YAML::Key << ("Child" + std::to_string(childrenProcessed)) << YAML::Value << YAML::BeginSeq;
+                break;
+            }
+        }
     }
 
     out << YAML::EndSeq;
@@ -195,7 +316,6 @@ std::optional<std::shared_ptr<IParsedData>> GeoLayoutFactory::parse(std::vector<
     offsetStack.push_back(0);
     
     while (true) {
-        uint32_t childCount = 0;
         std::vector<GeoLayoutArg> args;
         auto localOffset = offsetStack.back();
         reader.Seek(localOffset, LUS::SeekOffsetType::Start);
@@ -312,15 +432,15 @@ std::optional<std::shared_ptr<IParsedData>> GeoLayoutFactory::parse(std::vector<
                 auto x = reader.ReadFloat();
                 auto y = reader.ReadFloat();
                 auto z = reader.ReadFloat();
-                auto childLayoutOffset = reader.ReadUInt32();
+                auto childOffset = reader.ReadUInt32();
                 args.emplace_back(maxDistance);
                 args.emplace_back(minDistance);
                 args.emplace_back(x);
                 args.emplace_back(y);
                 args.emplace_back(z);
-                args.emplace_back(childLayoutOffset);
-                if (childLayoutOffset != 0) {
-                    offsetStack.push_back(localOffset + childLayoutOffset);
+                args.emplace_back(childOffset);
+                if (childOffset != 0) {
+                    offsetStack.push_back(localOffset + childOffset);
                 }
                 break;
             }
@@ -395,6 +515,9 @@ std::optional<std::shared_ptr<IParsedData>> GeoLayoutFactory::parse(std::vector<
                 auto childOffset = reader.ReadUInt16();
                 auto unkA = reader.ReadUByte();
                 auto unkB = reader.ReadUByte();
+                args.emplace_back(childOffset);
+                args.emplace_back(unkA);
+                args.emplace_back(unkB);
                 for (int32_t i = 0; i < 12; i++) {
                     auto unkCBuf = reader.ReadUByte();
                     args.emplace_back(unkCBuf);

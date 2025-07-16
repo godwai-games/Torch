@@ -78,7 +78,9 @@
 #ifdef BK64_SUPPORT
 #include "factories/bk64/AnimFactory.h"
 #include "factories/bk64/BKAssetFactory.h"
+#include "factories/bk64/DialogFactory.h"
 #include "factories/bk64/GeoLayoutFactory.h"
+#include "factories/bk64/GruntyQuestionFactory.h"
 #include "factories/bk64/SpriteFactory.h"
 #include "factories/bk64/ModelFactory.h"
 #endif
@@ -200,7 +202,9 @@ void Companion::Init(const ExportType type) {
 #ifdef BK64_SUPPORT
     this->RegisterFactory("BK64:ANIM", std::make_shared<BK64::AnimFactory>());
     this->RegisterFactory("BK64:ASSET_TABLE", std::make_shared<BK64::BKAssetFactory>());
+    this->RegisterFactory("BK64:DIALOG", std::make_shared<BK64::DialogFactory>());
     this->RegisterFactory("BK64:GEO_LAYOUT", std::make_shared<BK64::GeoLayoutFactory>());
+    this->RegisterFactory("BK64:GRUNTYQ", std::make_shared<BK64::GruntyQuestionFactory>());
     this->RegisterFactory("BK64:MODEL", std::make_shared<BK64::ModelFactory>());
     this->RegisterFactory("BK64:SPRITE", std::make_shared<BK64::SpriteFactory>());
 #endif
