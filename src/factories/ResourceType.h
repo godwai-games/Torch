@@ -68,6 +68,7 @@ enum class ResourceType {
     // BK64
     BKSprite = 0x424B5350,     // BKSP
     BKAnimation = 0x424B414E,  // BKAN  
+    BKDemoInput = 0x424B4449,  // BKDI
 
     // NAudio v0
     Bank = 0x42414E4B,         // BANK
