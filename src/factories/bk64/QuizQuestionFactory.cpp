@@ -1,4 +1,4 @@
-#include "GruntyQuestionFactory.h"
+#include "QuizQuestionFactory.h"
 
 #include "spdlog/spdlog.h"
 #include "Companion.h"
@@ -6,18 +6,18 @@
 #include "utils/TorchUtils.h"
 #include "types/RawBuffer.h"
 
-#define GRUNTY_QUESTION_HEADER_1 0x01
-#define GRUNTY_QUESTION_HEADER_2 0x03
-#define GRUNTY_QUESTION_HEADER_3 0x00
-#define GRUNTY_QUESTION_HEADER_4 0x05
-#define GRUNTY_QUESTION_HEADER_5 0x00
+#define QUIZ_QUESTION_HEADER_1 0x01
+#define QUIZ_QUESTION_HEADER_2 0x01
+#define QUIZ_QUESTION_HEADER_3 0x02
+#define QUIZ_QUESTION_HEADER_4 0x05
+#define QUIZ_QUESTION_HEADER_5 0x00
 
 #define FORMAT_HEX(x, w) std::hex << std::uppercase << std::setfill('0') << std::setw(w) << x << std::nouppercase << std::dec
 #define YAML_HEX(num) YAML::Hex << (num) << YAML::Dec
 
 namespace BK64 {
 
-ExportResult GruntyQuestionHeaderExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
+ExportResult QuizQuestionHeaderExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
     const auto symbol = GetSafeNode(node, "symbol", entryName);
 
     if (Companion::Instance->IsOTRMode()) {
@@ -28,17 +28,17 @@ ExportResult GruntyQuestionHeaderExporter::Export(std::ostream& write, std::shar
     return std::nullopt;
 }
 
-ExportResult GruntyQuestionCodeExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
+ExportResult QuizQuestionCodeExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
     auto offset = GetSafeNode<uint32_t>(node, "offset");
-    auto gruntyQuestion = std::static_pointer_cast<GruntyQuestionData>(raw);
+    auto quizQuestion = std::static_pointer_cast<QuizQuestionData>(raw);
     const auto symbol = GetSafeNode(node, "symbol", entryName);
 
     write << "u8 " << symbol << "[] = {\n";
 
-    write << fourSpaceTab << "GRUNTY_QUESTION_HEADER_1" << ", " << "GRUNTY_QUESTION_HEADER_2" << ", " << "GRUNTY_QUESTION_HEADER_3" << ", " << "GRUNTY_QUESTION_HEADER_4" << ", " << "GRUNTY_QUESTION_HEADER_5" << ",\n";
-    write << fourSpaceTab << "/* GruntyQuestion */\n";
-    write << fourSpaceTab << gruntyQuestion->mText.size() << ",\n";
-    for (const auto [cmd, str] : gruntyQuestion->mText) {
+    write << fourSpaceTab << "QUIZ_QUESTION_HEADER_1" << ", " << "QUIZ_QUESTION_HEADER_2" << ", " << "QUIZ_QUESTION_HEADER_3" << ", " << "QUIZ_QUESTION_HEADER_4" << ", " << "QUIZ_QUESTION_HEADER_5" << ",\n";
+    write << fourSpaceTab << "/* QuizQuestion */\n";
+    write << fourSpaceTab << quizQuestion->mText.size() << ",\n";
+    for (const auto [cmd, str] : quizQuestion->mText) {
         write << fourSpaceTab << "0x" << FORMAT_HEX((uint32_t)cmd, 2) << ", " << str.length();
         for (auto& c : str) {
             if (c < ' ') {
@@ -52,10 +52,9 @@ ExportResult GruntyQuestionCodeExporter::Export(std::ostream& write, std::shared
         write << ",\n";
     }
     write << fourSpaceTab << "/* Options */\n";
-    write << fourSpaceTab << gruntyQuestion->mOptions.size() << ",\n";
-    for (const auto [cmd, unk0, unk1, str] : gruntyQuestion->mOptions) {
+    write << fourSpaceTab << quizQuestion->mOptions.size() << ",\n";
+    for (const auto [cmd, str] : quizQuestion->mOptions) {
         write << fourSpaceTab << "0x" << FORMAT_HEX((uint32_t)cmd, 2) << ", " << str.length();
-        write << ", 0x" << FORMAT_HEX((uint32_t)unk0, 2) << ", 0x" << FORMAT_HEX((uint32_t)unk1, 2);
         for (auto& c : str) {
             if (c < ' ') {
                 write << ", 0x" << FORMAT_HEX((uint32_t)c, 2);
@@ -73,24 +72,22 @@ ExportResult GruntyQuestionCodeExporter::Export(std::ostream& write, std::shared
     return offset;
 }
 
-ExportResult BK64::GruntyQuestionBinaryExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
+ExportResult BK64::QuizQuestionBinaryExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
     auto writer = LUS::BinaryWriter();
-    const auto gruntyQuestion = std::static_pointer_cast<GruntyQuestionData>(raw);
+    const auto quizQuestion = std::static_pointer_cast<QuizQuestionData>(raw);
 
-    WriteHeader(writer, Torch::ResourceType::BKGruntyQuestion, 0);
+    WriteHeader(writer, Torch::ResourceType::BKQuizQuestion, 0);
 
-    writer.Write((uint32_t)gruntyQuestion->mText.size());
-    for (const auto& dialogString : gruntyQuestion->mText) {
+    writer.Write((uint32_t)quizQuestion->mText.size());
+    for (const auto& dialogString : quizQuestion->mText) {
         writer.Write(dialogString.cmd);
         writer.Write((uint32_t)dialogString.str.length());
         writer.Write(dialogString.str);
     }
 
-    writer.Write((uint32_t)gruntyQuestion->mOptions.size());
-    for (const auto& optionString : gruntyQuestion->mOptions) {
+    writer.Write((uint32_t)quizQuestion->mOptions.size());
+    for (const auto& optionString : quizQuestion->mOptions) {
         writer.Write(optionString.cmd);
-        writer.Write(optionString.unk0);
-        writer.Write(optionString.unk1);
         writer.Write((uint32_t)optionString.str.length());
         writer.Write(optionString.str);
     }
@@ -99,8 +96,8 @@ ExportResult BK64::GruntyQuestionBinaryExporter::Export(std::ostream& write, std
     return std::nullopt;
 }
 
-ExportResult BK64::GruntyQuestionModdingExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
-    const auto gruntyQuestion = std::static_pointer_cast<GruntyQuestionData>(raw);
+ExportResult BK64::QuizQuestionModdingExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
+    const auto quizQuestion = std::static_pointer_cast<QuizQuestionData>(raw);
     const auto symbol = GetSafeNode(node, "symbol", entryName);
 
     *replacement += ".yaml";
@@ -116,7 +113,7 @@ ExportResult BK64::GruntyQuestionModdingExporter::Export(std::ostream& write, st
     out << YAML::Value;
 
     out << YAML::BeginSeq;
-    for (const auto [cmd, str] : gruntyQuestion->mText) {
+    for (const auto [cmd, str] : quizQuestion->mText) {
         out << YAML::Flow;
         out << YAML::BeginSeq;
         out << YAML_HEX((uint32_t)cmd);
@@ -129,12 +126,10 @@ ExportResult BK64::GruntyQuestionModdingExporter::Export(std::ostream& write, st
     out << YAML::Value;
 
     out << YAML::BeginSeq;
-    for (const auto [cmd, unk0, unk1, str] : gruntyQuestion->mOptions) {
+    for (const auto [cmd, str] : quizQuestion->mOptions) {
         out << YAML::Flow;
         out << YAML::BeginSeq;
         out << YAML_HEX((uint32_t)cmd);
-        out << YAML_HEX((uint32_t)unk0);
-        out << YAML_HEX((uint32_t)unk1);
         out << str.c_str();
         out << YAML::EndSeq;
     }
@@ -149,7 +144,7 @@ ExportResult BK64::GruntyQuestionModdingExporter::Export(std::ostream& write, st
     return std::nullopt;
 }
 
-std::optional<std::shared_ptr<IParsedData>> GruntyQuestionFactory::parse(std::vector<uint8_t>& buffer, YAML::Node& node) {
+std::optional<std::shared_ptr<IParsedData>> QuizQuestionFactory::parse(std::vector<uint8_t>& buffer, YAML::Node& node) {
     auto [_, segment] = Decompressor::AutoDecode(node, buffer);
     LUS::BinaryReader reader(segment.data, segment.size);
     reader.SetEndianness(Torch::Endianness::Big);
@@ -161,12 +156,12 @@ std::optional<std::shared_ptr<IParsedData>> GruntyQuestionFactory::parse(std::ve
     auto header4 = reader.ReadInt8();
     auto header5 = reader.ReadInt8();
 
-    if (header1 != GRUNTY_QUESTION_HEADER_1 || header2 != GRUNTY_QUESTION_HEADER_2 || header3 != GRUNTY_QUESTION_HEADER_3 || header4 != GRUNTY_QUESTION_HEADER_4 || header5 != GRUNTY_QUESTION_HEADER_5) {
-        SPDLOG_ERROR("Invalid Header For BK64 GruntyQuestion {}", symbol);
+    if (header1 != QUIZ_QUESTION_HEADER_1 || header2 != QUIZ_QUESTION_HEADER_2 || header3 != QUIZ_QUESTION_HEADER_3 || header4 != QUIZ_QUESTION_HEADER_4 || header5 != QUIZ_QUESTION_HEADER_5) {
+        SPDLOG_ERROR("Invalid Header For BK64 QuizQuestion {}", symbol);
         return std::nullopt;
     }
     std::vector<DialogString> text;
-    std::vector<OptionString> options;
+    std::vector<DialogString> options;
         
     auto textSize = reader.ReadUByte();
 
@@ -182,22 +177,20 @@ std::optional<std::shared_ptr<IParsedData>> GruntyQuestionFactory::parse(std::ve
     }
 
     for (uint8_t i = textSize - 3; i < textSize; i++) {
-        OptionString optionString;
+        DialogString optionString;
 
         optionString.cmd = reader.ReadUByte();
 
         auto strLen = reader.ReadUByte();
-        optionString.unk0 = reader.ReadUByte();
-        optionString.unk1 = reader.ReadUByte();
 
-        optionString.str = reader.ReadString(strLen - 2);
+        optionString.str = reader.ReadString(strLen);
         options.push_back(optionString);
     }
 
-    return std::make_shared<GruntyQuestionData>(text, options);
+    return std::make_shared<QuizQuestionData>(text, options);
 }
 
-std::optional<std::shared_ptr<IParsedData>> GruntyQuestionFactory::parse_modding(std::vector<uint8_t>& buffer, YAML::Node& node) {
+std::optional<std::shared_ptr<IParsedData>> QuizQuestionFactory::parse_modding(std::vector<uint8_t>& buffer, YAML::Node& node) {
     YAML::Node assetNode;
     
     try {
@@ -212,7 +205,7 @@ std::optional<std::shared_ptr<IParsedData>> GruntyQuestionFactory::parse_modding
     const auto info = assetNode.begin()->second;
 
     std::vector<DialogString> text;
-    std::vector<OptionString> options;
+    std::vector<DialogString> options;
 
     auto textNode = info["Text"];
     auto optionsNode = info["Options"];
@@ -227,24 +220,22 @@ std::optional<std::shared_ptr<IParsedData>> GruntyQuestionFactory::parse_modding
 
     uint32_t i = 0;
     for (YAML::iterator it = optionsNode.begin(); it != optionsNode.end(); ++it) {
-        OptionString optionString;
+        DialogString optionString;
         optionString.cmd = (*it)[0].as<uint32_t>();
-        optionString.unk0 = (*it)[1].as<uint32_t>();
-        optionString.unk1 = (*it)[2].as<uint32_t>();
-        optionString.str = (*it)[3].as<std::string>();
+        optionString.str = (*it)[1].as<std::string>();
         optionString.str += '\0';
         options.push_back(optionString);
         if (++i >= 3) {
-            SPDLOG_WARN("BK64 GruntyQuestion: Only 3 Options Allowed");
+            SPDLOG_WARN("BK64 QuizQuestion: Only 3 Options Allowed");
             break;
         }
     }
 
     if (i != 3) {
-        throw std::runtime_error("BK64 GruntyQuestion: Requires Exactly 3 Options");
+        throw std::runtime_error("BK64 QuizQuestion: Requires Exactly 3 Options");
     }
 
-    return std::make_shared<GruntyQuestionData>(text, options);
+    return std::make_shared<QuizQuestionData>(text, options);
 }
 
 } // namespace BK64

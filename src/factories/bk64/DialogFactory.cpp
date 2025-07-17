@@ -73,6 +73,22 @@ ExportResult DialogCodeExporter::Export(std::ostream& write, std::shared_ptr<IPa
 ExportResult BK64::DialogBinaryExporter::Export(std::ostream& write, std::shared_ptr<IParsedData> raw, std::string& entryName, YAML::Node& node, std::string* replacement) {
     auto writer = LUS::BinaryWriter();
     const auto dialog = std::static_pointer_cast<DialogData>(raw);
+
+    WriteHeader(writer, Torch::ResourceType::BKDialog, 0);
+
+    writer.Write((uint32_t)dialog->mBottom.size());
+    for (const auto& dialogString : dialog->mBottom) {
+        writer.Write(dialogString.cmd);
+        writer.Write((uint32_t)dialogString.str.length());
+        writer.Write(dialogString.str);
+    }
+
+    writer.Write((uint32_t)dialog->mTop.size());
+    for (const auto& dialogString : dialog->mTop) {
+        writer.Write(dialogString.cmd);
+        writer.Write((uint32_t)dialogString.str.length());
+        writer.Write(dialogString.str);
+    }
     
     writer.Finish(write);
     return std::nullopt;

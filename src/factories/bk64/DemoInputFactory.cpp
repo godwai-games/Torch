@@ -46,7 +46,7 @@ ExportResult BK64::DemoInputBinaryExporter::Export(std::ostream& write, std::sha
     auto writer = LUS::BinaryWriter();
     const auto demoInput = std::static_pointer_cast<DemoInputData>(raw);
 
-    WriteHeader(writer, Torch::ResourceType::BKAnimation, 0);
+    WriteHeader(writer, Torch::ResourceType::BKDemoInput, 0);
 
     writer.Write((uint32_t)demoInput->mInputs.size());
     for (const auto& input : demoInput->mInputs) {
