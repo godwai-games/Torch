@@ -75,6 +75,12 @@
 #include "factories/fzerox/GhostRecordFactory.h"
 #endif
 
+#ifdef BK64_SUPPORT
+#include "factories/bk64/AnimFactory.h"
+#include "factories/bk64/BKAssetFactory.h"
+#include "factories/bk64/SpriteFactory.h"
+#endif
+
 #ifdef MARIO_ARTIST_SUPPORT
 #include "factories/mario_artist/MA2D1Factory.h"
 #endif
@@ -187,6 +193,12 @@ void Companion::Init(const ExportType type) {
 #ifdef FZERO_SUPPORT
     this->RegisterFactory("FZX:COURSE", std::make_shared<FZX::CourseFactory>());
     this->RegisterFactory("FZX:GHOST", std::make_shared<FZX::GhostRecordFactory>());
+#endif
+
+#ifdef BK64_SUPPORT
+    this->RegisterFactory("BK64:ANIM", std::make_shared<BK64::AnimFactory>());
+    this->RegisterFactory("BK64:ASSET_TABLE", std::make_shared<BK64::BKAssetFactory>());
+    this->RegisterFactory("BK64:SPRITE", std::make_shared<BK64::SpriteFactory>());
 #endif
 
 #ifdef MARIO_ARTIST_SUPPORT
